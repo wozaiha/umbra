@@ -14,16 +14,16 @@
  *     GNU Affero General Public License for more details.
  */
 
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
 using Umbra.Common;
-using Sheet = Lumina.Excel.GeneratedSheets;
+using Sheet = Lumina.Excel.Sheets;
 
 namespace Umbra.Game;
 
@@ -66,19 +66,22 @@ internal sealed class Zone : IZone
         _player           = player;
 
         Id                  = zoneId;
-        MapSheet            = dataManager.GetExcelSheet<Sheet.Map>()!.GetRow(zoneId)!;
-        Type                = (TerritoryType)MapSheet.TerritoryType.Value!.TerritoryIntendedUse;
-        TerritoryId         = MapSheet.TerritoryType.Row;
-        Name                = MapSheet.PlaceName.Value!.Name.ToString();
-        SubName             = MapSheet.PlaceNameSub.Value!.Name.ToString();
-        RegionName          = MapSheet.PlaceNameRegion.Value!.Name.ToString();
+        MapSheet            = dataManager.GetExcelSheet<Sheet.Map>().GetRow(zoneId);
+        Type                = (TerritoryType)MapSheet.TerritoryType.Value.TerritoryIntendedUse.Value.RowId;
+        TerritoryId         = MapSheet.TerritoryType.RowId;
+        Name                = MapSheet.PlaceName.Value.Name.ExtractText();
+        SubName             = MapSheet.PlaceNameSub.Value.Name.ExtractText();
+        RegionName          = MapSheet.PlaceNameRegion.Value.Name.ExtractText();
         Offset              = new(MapSheet.OffsetX, MapSheet.OffsetY);
         SizeFactor          = MapSheet.SizeFactor;
         IsSanctuary         = false;
         CurrentDistrictName = "-";
 
-        StaticMarkers = dataManager.GetExcelSheet<Sheet.MapMarker>()!
-            .Where(m => m.RowId == MapSheet.MapMarkerRange && m.X > 0 && m.Y > 0)
+        StaticMarkers = dataManager
+            .GetSubrowExcelSheet<Sheet.MapMarker>()
+            .Where(m => m.RowId == MapSheet.MapMarkerRange)
+            .SelectMany(m => m)
+            .Where(m => m is { X: > 0, Y: > 0 })
             .Select(m => markerFactory.FromMapMarkerSheet(MapSheet, m))
             .ToList();
 
@@ -109,9 +112,10 @@ internal sealed class Zone : IZone
         HousingManager* housingManager = HousingManager.Instance();
 
         if (housingManager == null || housingManager->CurrentTerritory == null) {
-            CurrentDistrictName = _dataManager.GetExcelSheet<Sheet.PlaceName>()!
-                    .GetRow(territoryInfo->AreaPlaceNameId)
-                    ?.Name.ToString()
+            CurrentDistrictName = _dataManager
+                    .GetExcelSheet<Sheet.PlaceName>()
+                    .FindRow(territoryInfo->AreaPlaceNameId)
+                    ?.Name.ExtractText()
                 ?? "???";
         } else {
             CurrentDistrictName = GetHousingDistrictName();

@@ -146,6 +146,19 @@ public interface IPlayer
     /// </summary>
     public string CurrentWorldName { get; }
 
+    /// <summary>
+    /// The name of the data center the player originates from.
+    /// </summary>
+    public string HomeDataCenterName { get; }
+
+    /// <summary>
+    /// The name of the data center the player is currently in.
+    /// </summary>
+    public string CurrentDataCenterName { get; }
+
+    /// <summary>
+    /// The ID of the grand company the player is a member of.
+    /// </summary>
     public byte GrandCompanyId { get; }
 
     /// <summary>
@@ -169,10 +182,20 @@ public interface IPlayer
     public bool IsBattleMentor { get; }
 
     /// <summary>
+    /// True if the player is a new adventurer.
+    /// </summary>
+    public bool IsNovice { get; }
+
+    /// <summary>
+    /// True if the player is a returning adventurer.
+    /// </summary>
+    public bool IsReturner { get; }
+
+    /// <summary>
     /// Sets the player's online status to the specified status ID.
     /// </summary>
     /// <param name="statusId">
-    /// A RowId from the <see cref="Lumina.Excel.GeneratedSheets.OnlineStatus"/> excel sheet.
+    /// A RowId from the <see cref="Lumina.Excel.Sheets.OnlineStatus"/> excel sheet.
     /// </param>
     public void SetOnlineStatus(uint statusId);
 

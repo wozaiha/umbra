@@ -14,14 +14,13 @@
  *     GNU Affero General Public License for more details.
  */
 
+using Dalamud.Plugin.Services;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Dalamud.Plugin.Services;
-using Dalamud.Utility;
-using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.Game.UI;
-using Lumina.Excel.GeneratedSheets;
 using Umbra.Common;
 using Umbra.Game;
 
@@ -47,7 +46,7 @@ internal partial class CurrenciesWidget
         DataManager = Framework.Service<IDataManager>();
         Player      = Framework.Service<IPlayer>();
 
-        foreach (var row in DataManager.GetExcelSheet<GrandCompanyRank>()!) {
+        foreach (var row in DataManager.GetExcelSheet<GrandCompanyRank>()) {
             GcSealsCap[row.RowId] = (int)row.MaxSeals;
         }
 
@@ -76,14 +75,14 @@ internal partial class CurrenciesWidget
     private static void RegisterCurrency(CurrencyType type, uint groupId, bool showCap = true)
     {
         uint id = type switch {
-            CurrencyType.LimitedTomestone    => GetLimitedTomestoneItem()?.Item.Row ?? 0,
-            CurrencyType.NonLimitedTomestone => GetNonLimitedTomestoneItem()?.Item.Row ?? 0,
+            CurrencyType.LimitedTomestone    => GetLimitedTomestoneItem()?.Item.RowId ?? 0,
+            CurrencyType.NonLimitedTomestone => GetNonLimitedTomestoneItem()?.Item.RowId ?? 0,
             _                                => (uint)type
         };
 
         if (id == 0) return;
 
-        Item? item = DataManager.GetExcelSheet<Item>()!.GetRow(id);
+        Item? item = DataManager.GetExcelSheet<Item>().FindRow(id);
 
         if (item == null) {
             Logger.Warning($"Attempted to precache an unknown item #{item} in currency widget.");
@@ -93,10 +92,10 @@ internal partial class CurrenciesWidget
         Currencies[type] = new() {
             Type    = type,
             Id      = id,
-            Name    = item.Name.ToDalamudString().TextValue,
+            Name    = item.Value.Name.ExtractText(),
             GroupId = groupId,
-            Icon    = item.Icon,
-            Cap     = showCap ? item.StackSize : 0,
+            Icon    = item.Value.Icon,
+            Cap     = showCap ? item.Value.StackSize : 0,
         };
     }
 
@@ -149,8 +148,8 @@ internal partial class CurrenciesWidget
     /// </summary>
     private static TomestonesItem? GetLimitedTomestoneItem()
     {
-        return DataManager.GetExcelSheet<TomestonesItem>()!
-            .FirstOrDefault(tomestone => tomestone.Tomestones.Row is 3);
+        return DataManager.GetExcelSheet<TomestonesItem>()
+            .FirstOrDefault(tomestone => tomestone.Tomestones.RowId is 3);
     }
 
     /// <summary>
@@ -158,8 +157,8 @@ internal partial class CurrenciesWidget
     /// </summary>
     private static TomestonesItem? GetNonLimitedTomestoneItem()
     {
-        return DataManager.GetExcelSheet<TomestonesItem>()!
-            .FirstOrDefault(tomestone => tomestone.Tomestones.Row is 2);
+        return DataManager.GetExcelSheet<TomestonesItem>()
+            .FirstOrDefault(tomestone => tomestone.Tomestones.RowId is 2);
     }
 
     private enum CurrencyType
@@ -211,8 +210,8 @@ internal partial class CurrenciesWidget
         CustomCurrencies.Clear();
         foreach (string id in idList.Split(',')) {
             if (uint.TryParse(id.Trim(), out uint currencyId)) {
-                var item = DataManager.GetExcelSheet<Item>()!.GetRow(currencyId);
-                if (item is null || string.IsNullOrEmpty(item.Name.ToDalamudString().TextValue)) continue;
+                var item = DataManager.GetExcelSheet<Item>().FindRow(currencyId);
+                if (item is null || string.IsNullOrEmpty(item.Value.Name.ExtractText())) continue;
 
                 // Test if the given id is amongst the values of CurrencyType enum.
                 if (Enum.IsDefined(typeof(CurrencyType), (int)currencyId)) {
@@ -226,9 +225,9 @@ internal partial class CurrenciesWidget
                     new() {
                         Type    = CurrencyType.Custom,
                         Id      = currencyId,
-                        Name    = item.Name.ToDalamudString().TextValue,
-                        Icon    = item.Icon,
-                        Cap     = item.StackSize,
+                        Name    = item.Value.Name.ExtractText(),
+                        Icon    = item.Value.Icon,
+                        Cap     = item.Value.StackSize,
                         GroupId = 5
                     }
                 );

@@ -69,11 +69,14 @@ internal sealed partial class GearsetSwitcherWidget(
 
         bool showText = GetConfigValue<string>("DisplayMode") != "IconOnly";
         bool showInfo = GetConfigValue<string>(_currentGearset!.IsMaxLevel ? "InfoTypeMaxLevel" : "InfoType") != "None";
+        string customLabel = GetConfigValue<string>("CustomLabel");
 
         if (showText && showInfo) {
-            SetTwoLabels(_currentGearset!.Name, GetCurrentGearsetStatusText());
+            string effectiveLabel = customLabel == "" ? _currentGearset.Name : customLabel;
+            SetTwoLabels(effectiveLabel, GetCurrentGearsetStatusText());
         } else if (showText && !showInfo) {
-            SetLabel(_currentGearset!.Name);
+            string effectiveLabel = customLabel == "" ? _currentGearset.Name : customLabel;
+            SetLabel(effectiveLabel);
         } else {
             SetTwoLabels(null, null);
             SetLabel(null);
@@ -90,8 +93,10 @@ internal sealed partial class GearsetSwitcherWidget(
         Popup.ShowExperiencePct           = GetConfigValue<bool>("ShowExperiencePct");
         Popup.ShowItemLevel               = GetConfigValue<bool>("ShowButtonItemLevel");
         Popup.ShowWarningIcon             = GetConfigValue<bool>("ShowWarningIcon");
+        Popup.HideLevelIfMax              = GetConfigValue<bool>("HideLevelIfMax");
         Popup.GearsetFilterPrefix         = GetConfigValue<string>("GearsetFilterPrefix");
         Popup.GearsetNodeWidth            = GetConfigValue<int>("GearsetNodeWidth");
+        Popup.GearsetNodeHeight           = GetConfigValue<int>("GearsetNodeHeight");
 
         Popup.HeaderIconType    = GetConfigValue<string>("PopupHeaderIconType");
         Popup.ButtonIconType    = GetConfigValue<string>("PopupButtonIconType");

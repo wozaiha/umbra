@@ -14,7 +14,6 @@
  *     GNU Affero General Public License for more details.
  */
 
-using Dalamud.Utility;
 using System.Collections.Generic;
 using Umbra.Common;
 using Umbra.Game;
@@ -63,6 +62,8 @@ internal partial class OnlineStatusWidget(
         SetPopupStatusOption(22, true);                                // Role-Playing
         SetPopupStatusOption(21, _player.IsGeneralActionUnlocked(13)); // Looking to Meld Materia
         SetPopupStatusOption(23, !_player.IsInParty);                  // Looking for Party
+        SetPopupStatusOption(32, _player.IsNovice);                    // New Adventurer
+        SetPopupStatusOption(31, _player.IsReturner);                  // Returning
         SetPopupStatusOption(27, _player.IsMentor);                    // Mentor
         SetPopupStatusOption(28, _player.IsBattleMentor);              // PvE Battle Mentor
         SetPopupStatusOption(30, _player.IsBattleMentor);              // PvP Battle Mentor
@@ -77,7 +78,7 @@ internal partial class OnlineStatusWidget(
         uint statusId = _player.OnlineStatusId == 0 ? 47 : _player.OnlineStatusId;
         var  status   = GetStatusById(statusId);
 
-        SetLabel(status.Name.ToDalamudString().TextValue);
+        SetLabel(status.Name.ExtractText());
 
         _iconId = status.Icon;
 

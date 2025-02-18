@@ -1,9 +1,8 @@
 ﻿using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using Lumina.Excel.GeneratedSheets2;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,9 +29,9 @@ internal sealed class CollectionItemShortcutProvider(IDataManager dataManager) :
             .Select(
                 i => new Shortcut {
                     Id          = i.RowId,
-                    Name        = i.UIData.Value!.Name.ToDalamudString().TextValue,
+                    Name        = i.UIData.Value.Name.ExtractText(),
                     Description = "",
-                    IconId      = i.UIData.Value!.Icon,
+                    IconId      = i.UIData.Value.Icon,
                 }
             )
             .Where(i => i.Name.Contains(searchFilter ?? "", StringComparison.OrdinalIgnoreCase))
@@ -44,13 +43,13 @@ internal sealed class CollectionItemShortcutProvider(IDataManager dataManager) :
     {
         if (id == 0u) return null;
 
-        var item = dataManager.GetExcelSheet<McGuffin>()!.GetRow(id);
+        var item = dataManager.GetExcelSheet<McGuffin>().FindRow(id);
         if (item == null) return null;
 
         return new() {
             Id         = id,
-            Name       = item.UIData.Value!.Name.ToDalamudString().TextValue,
-            IconId     = item.UIData.Value!.Icon,
+            Name       = item.Value.UIData.Value.Name.ExtractText(),
+            IconId     = item.Value.UIData.Value.Icon,
             IsDisabled = !PlayerState.Instance()->IsMcGuffinUnlocked((ushort)id),
         };
     }
@@ -68,13 +67,13 @@ internal sealed class CollectionItemShortcutProvider(IDataManager dataManager) :
 
     private unsafe List<McGuffin> GetMcGuffins()
     {
-        List<McGuffin> list        = dataManager.GetExcelSheet<McGuffin>()!.ToList();
+        List<McGuffin> list        = dataManager.GetExcelSheet<McGuffin>().ToList();
         PlayerState*   playerState = PlayerState.Instance();
 
         list.Sort(
             (a, b) => String.Compare(
-                a.UIData.Value!.Name.ToDalamudString().TextValue,
-                b.UIData.Value!.Name.ToDalamudString().TextValue,
+                a.UIData.Value.Name.ExtractText(),
+                b.UIData.Value.Name.ExtractText(),
                 StringComparison.OrdinalIgnoreCase
             )
         );

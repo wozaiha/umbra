@@ -19,7 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.Character;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using Umbra.Common;
 using Umbra.Game;
 
@@ -64,23 +64,24 @@ internal class HuntWorldMarkerFactory(IDataManager dataManager, IZoneManager zon
         var cm = CharacterManager.Instance();
         if (cm == null) return;
 
-        var fadeDist = GetConfigValue<int>("FadeDistance");
-        var fadeAttn = GetConfigValue<int>("FadeAttenuation");
+        var fadeDist       = GetConfigValue<int>("FadeDistance");
+        var fadeAttn       = GetConfigValue<int>("FadeAttenuation");
+        var maxVisDistance = GetConfigValue<int>("MaxVisibleDistance");
 
         List<string> activeIds = [];
 
         foreach (var chara in cm->BattleCharas) {
             BattleChara* bc = chara.Value;
 
-            if (bc == null || 0 == bc->Character.GameObject.BaseId) continue;
+            if (bc == null || 0 == bc->BaseId) continue;
 
-            var nm = GetNotoriousMonster(bc->Character.GameObject.BaseId);
+            var nm = GetNotoriousMonster(bc->BaseId);
             if (nm == null) continue;
 
-            string name = bc->Character.GameObject.NameString;
-            string rank = _rankPrefixes[nm.Rank];
+            string name = bc->NameString;
+            string rank = _rankPrefixes[nm.Value.Rank];
 
-            switch (nm.Rank) {
+            switch (nm.Value.Rank) {
                 case 0:
                 case 1 when !GetConfigValue<bool>("ShowB"):
                 case 2 when !GetConfigValue<bool>("ShowA"):
@@ -89,22 +90,24 @@ internal class HuntWorldMarkerFactory(IDataManager dataManager, IZoneManager zon
                     continue;
             }
 
-            var p  = bc->Character.GameObject.Position;
-            var id = $"NM_{bc->Character.GameObject.BaseId}";
+            var p  = bc->Position;
+            var id = $"NM_{bc->BaseId}";
 
             activeIds.Add(id);
 
             RemoveAllMarkers();
+
             SetMarker(
                 new() {
-                    Key           = id,
-                    MapId         = zoneManager.CurrentZone.Id,
-                    Position      = new(p.X, p.Y + bc->Character.CalculateHeight(), p.Z),
-                    IconId        = GetMarkerIcon(nm.Rank, bc->Character.IsHostile),
-                    Label         = $"{rank} {name}",
-                    SubLabel      = bc->Character.InCombat ? " (In Combat)" : null,
-                    FadeDistance  = new(fadeDist, fadeDist + fadeAttn),
-                    ShowOnCompass = GetConfigValue<bool>("ShowOnCompass")
+                    Key                = id,
+                    MapId              = zoneManager.CurrentZone.Id,
+                    Position           = new(p.X, p.Y + bc->Effects.CurrentFloatHeight, p.Z),
+                    IconId             = GetMarkerIcon(nm.Value.Rank, bc->Character.IsHostile),
+                    Label              = $"{rank} {name}",
+                    SubLabel           = bc->Character.InCombat ? " (In Combat)" : null,
+                    FadeDistance       = new(fadeDist, fadeDist + fadeAttn),
+                    ShowOnCompass      = GetConfigValue<bool>("ShowOnCompass"),
+                    MaxVisibleDistance = maxVisDistance,
                 }
             );
         }
@@ -116,8 +119,13 @@ internal class HuntWorldMarkerFactory(IDataManager dataManager, IZoneManager zon
     {
         if (_notoriousMonstersCache.TryGetValue(dataId, out var nm)) return nm;
 
-        NotoriousMonster? monster = dataManager.GetExcelSheet<NotoriousMonster>()!
-            .FirstOrDefault(n => n.BNpcBase.Row == dataId);
+        NotoriousMonster? monster = dataManager
+            .GetExcelSheet<NotoriousMonster>()
+            .FirstOrDefault(n => n.BNpcBase.RowId == dataId);
+
+        if (monster is { RowId: 0 }) {
+            monster = null;
+        }
 
         _notoriousMonstersCache[dataId] = monster;
 

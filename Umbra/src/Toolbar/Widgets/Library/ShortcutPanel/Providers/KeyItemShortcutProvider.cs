@@ -1,7 +1,6 @@
 ﻿using Dalamud.Plugin.Services;
-using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using Lumina.Excel.GeneratedSheets2;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,7 +22,7 @@ internal sealed class KeyItemShortcutProvider(IDataManager dataManager) : Abstra
     {
         return GetEventItemsFromInventory()
             .Where(
-                i => i.Name.ToDalamudString().TextValue.Contains(searchFilter ?? "", StringComparison.OrdinalIgnoreCase)
+                i => i.Name.ExtractText().Contains(searchFilter ?? "", StringComparison.OrdinalIgnoreCase)
             )
             .Select(
                 i => new Shortcut {
@@ -41,7 +40,7 @@ internal sealed class KeyItemShortcutProvider(IDataManager dataManager) : Abstra
     {
         if (id == 0u) return null;
 
-        var item = dataManager.GetExcelSheet<EventItem>()!.GetRow(id);
+        var item = dataManager.GetExcelSheet<EventItem>().FindRow(id);
         if (item == null) return null;
 
         InventoryContainer* container = InventoryManager.Instance()->GetInventoryContainer(InventoryType.KeyItems);
@@ -59,8 +58,8 @@ internal sealed class KeyItemShortcutProvider(IDataManager dataManager) : Abstra
 
         return new() {
             Id         = id,
-            Name       = item.Name.ToDalamudString().TextValue,
-            IconId     = item.Icon,
+            Name       = item.Value.Name.ExtractText(),
+            IconId     = item.Value.Icon,
             IsDisabled = !found,
         };
     }
@@ -68,7 +67,7 @@ internal sealed class KeyItemShortcutProvider(IDataManager dataManager) : Abstra
     /// <inheritdoc/>
     public override unsafe void OnInvokeShortcut(byte categoryId, int slotId, uint id, string widgetInstanceId)
     {
-        EventItem? item = dataManager.GetExcelSheet<EventItem>()!.GetRow(id);
+        EventItem? item = dataManager.GetExcelSheet<EventItem>().FindRow(id);
         if (item == null) return;
 
         ActionManager* am = ActionManager.Instance();
@@ -82,19 +81,19 @@ internal sealed class KeyItemShortcutProvider(IDataManager dataManager) : Abstra
         if (container == null) return [];
 
         var items = new List<EventItem>();
-        var sheet = dataManager.GetExcelSheet<EventItem>()!;
+        var sheet = dataManager.GetExcelSheet<EventItem>();
 
         for (var i = 0; i < container->Size; i++) {
             var slot = container->GetInventorySlot(i);
             if (slot == null || slot->ItemId == 0) continue;
-            var item = sheet.GetRow(slot->ItemId);
+            var item = sheet.FindRow(slot->ItemId);
 
             if (item == null) {
                 Logger.Warning($"Failed to find item for ID: {slot->ItemId}");
                 continue;
             }
 
-            items.Add(item);
+            items.Add(item.Value);
         }
 
         items.Sort(

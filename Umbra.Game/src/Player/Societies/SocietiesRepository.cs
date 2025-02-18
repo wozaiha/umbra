@@ -14,13 +14,13 @@
  *     GNU Affero General Public License for more details.
  */
 
-using System;
-using System.Collections.Generic;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Application.Network.WorkDefinitions;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
+using System;
+using System.Collections.Generic;
 using Umbra.Common;
 
 namespace Umbra.Game.Societies;
@@ -49,6 +49,7 @@ internal sealed class SocietiesRepository : ISocietiesRepository, IDisposable
         { 15, 169 }, // Arkasodara - Yedlihmad
         { 16, 181 }, // Omicrons - Base Omicron
         { 17, 175 }, // Loporrits - Bestways Burrow
+        { 18, 238 }, // Pelupelu - Dock Poga
     };
 
     private IDataManager DataManager { get; }
@@ -71,10 +72,10 @@ internal sealed class SocietiesRepository : ISocietiesRepository, IDisposable
         lock (Societies) {
             for (var i = 1; i < qm->BeastReputation.Length + 1; i++) {
                 (BeastTribe tribe, BeastReputationRank rankRow, ushort currentRep, ushort requiredRep, byte rank,
-                    byte maxRank, string rankName) =
+                        byte maxRank, string rankName) =
                     GetTribe((byte)(i));
 
-                string name = tribe.Name.ToString();
+                string name = tribe.Name.ExtractText();
 
                 Societies[tribe.RowId] = new() {
                     Id             = tribe.RowId,
@@ -82,11 +83,11 @@ internal sealed class SocietiesRepository : ISocietiesRepository, IDisposable
                     Rank           = rank,
                     MaxRank        = maxRank,
                     RankName       = rankName,
-                    RankColor      = rankRow.Color.Row,
-                    ExpansionId    = tribe.Expansion.Row,
-                    ExpansionName  = tribe.Expansion.Value!.Name.ToString(),
+                    RankColor      = rankRow.Color.RowId,
+                    ExpansionId    = tribe.Expansion.RowId,
+                    ExpansionName  = tribe.Expansion.Value.Name.ExtractText(),
                     IconId         = tribe.Icon,
-                    CurrencyItemId = tribe.CurrencyItem.Row,
+                    CurrencyItemId = tribe.CurrencyItem.RowId,
                     CurrentRep     = currentRep,
                     RequiredRep    = requiredRep,
                 };
@@ -116,28 +117,25 @@ internal sealed class SocietiesRepository : ISocietiesRepository, IDisposable
         QuestManager*       qm    = QuestManager.Instance();
         BeastReputationWork tribe = qm->BeastReputation[index - 1];
 
-        var                 rank       = (byte)(tribe.Rank & 0x7F);
+        byte                rank       = PlayerState.Instance()->GetBeastTribeRank(index);
         ushort              currentRep = tribe.Value;
-        var                 tribeRow   = DataManager.GetExcelSheet<BeastTribe>()!.GetRow(index)!;
-        BeastReputationRank rankRow    = DataManager.GetExcelSheet<BeastReputationRank>()!.GetRow(rank)!;
+        var                 tribeRow   = DataManager.GetExcelSheet<BeastTribe>().GetRow(index);
+        BeastReputationRank rankRow    = DataManager.GetExcelSheet<BeastReputationRank>().GetRow(rank);
         byte                maxRank    = tribeRow.MaxRank;
-        string              rankName   = rankRow.AlliedNames.ToString();
+        string              rankName   = rankRow.AlliedNames.ExtractText();
         ushort              neededRep  = rankRow.RequiredReputation;
 
-        if (tribeRow.Expansion.Row != 0
-            && tribeRow.Unknown7 != 0
-            && QuestManager.IsQuestComplete(tribeRow.Unknown7))
-        {
+        if (tribeRow.Expansion.RowId != 0
+            && tribeRow.Unknown1 != 0
+            && QuestManager.IsQuestComplete(tribeRow.Unknown1)) {
             rank++;
-            rankName  = rankRow.Name.ToString();
+            rankName  = rankRow.Name.ExtractText();
             neededRep = 0;
-        }
-        else if (tribeRow.Expansion.Row == 0) {
-            rankName = rankRow.Name.ToString();
+        } else if (tribeRow.Expansion.RowId == 0) {
+            rankName = rankRow.Name.ExtractText();
         }
 
-        if (rank > maxRank)
-            maxRank = rank;
+        if (rank > maxRank) maxRank = rank;
 
         return (tribeRow, rankRow, currentRep, neededRep, rank, maxRank, rankName);
     }

@@ -17,12 +17,12 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using Dalamud.Game.ClientState.Fates;
 using Dalamud.Game.Text;
 using Dalamud.Memory;
 using FFXIVClientStructs.FFXIV.Client.Game.Fate;
 using Umbra.Common;
 using Umbra.Game;
+using FateState = Dalamud.Game.ClientState.Fates.FateState;
 
 namespace Umbra.Markers.Library;
 
@@ -49,8 +49,9 @@ internal class FateMarkerFactory(IZoneManager zoneManager) : WorldMarkerFactory
     [OnTick(interval: 1000)]
     private unsafe void OnUpdate()
     {
-        var enabled  = GetConfigValue<bool>("Enabled");
-        var fadeDist = GetConfigValue<int>("FadeDistance");
+        var enabled        = GetConfigValue<bool>("Enabled");
+        var fadeDist       = GetConfigValue<int>("FadeDistance");
+        var maxVisDistance = GetConfigValue<int>("MaxVisibleDistance");
 
         FateManager* fm = FateManager.Instance();
 
@@ -86,14 +87,15 @@ internal class FateMarkerFactory(IZoneManager zoneManager) : WorldMarkerFactory
 
             SetMarker(
                 new() {
-                    Key           = id,
-                    IconId        = fate->IconId,
-                    MapId         = zoneManager.CurrentZone.Id,
-                    Label         = $"{prefix}{MemoryHelper.ReadSeString(&fate->Name)}",
-                    SubLabel      = $"{state} - {timeLeft:mm\\:ss}{progress}",
-                    Position      = fate->Location + new Vector3(0, 1.8f, 0),
-                    FadeDistance  = new(fadeDist, fadeDist + Math.Max(1, GetConfigValue<int>("FadeAttenuation"))),
-                    ShowOnCompass = GetConfigValue<bool>("ShowOnCompass"),
+                    Key                = id,
+                    IconId             = fate->IconId,
+                    MapId              = zoneManager.CurrentZone.Id,
+                    Label              = $"{prefix}{MemoryHelper.ReadSeString(&fate->Name)}",
+                    SubLabel           = $"{state} - {timeLeft:mm\\:ss}{progress}",
+                    Position           = fate->Location + new Vector3(0, 1.8f, 0),
+                    FadeDistance       = new(fadeDist, fadeDist + Math.Max(1, GetConfigValue<int>("FadeAttenuation"))),
+                    ShowOnCompass      = GetConfigValue<bool>("ShowOnCompass"),
+                    MaxVisibleDistance = maxVisDistance,
                 }
             );
         }

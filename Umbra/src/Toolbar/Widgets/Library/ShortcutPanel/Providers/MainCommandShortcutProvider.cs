@@ -1,8 +1,7 @@
 ﻿using Dalamud.Plugin.Services;
-using Dalamud.Utility;
-using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI;
-using Lumina.Excel.GeneratedSheets;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,12 +22,12 @@ internal sealed class MainCommandShortcutProvider(IDataManager dataManager) : Ab
     public override unsafe IList<Shortcut> GetShortcuts(string? searchFilter)
     {
         List<Shortcut> shortcuts = [];
-        var            actions   = dataManager.GetExcelSheet<MainCommand>()!.ToList();
+        var            actions   = dataManager.GetExcelSheet<MainCommand>().ToList();
 
         actions.Sort(
             (a, b) => string.Compare(
-                a.Name.ToDalamudString().TextValue,
-                b.Name.ToDalamudString().TextValue,
+                a.Name.ExtractText(),
+                b.Name.ExtractText(),
                 StringComparison.OrdinalIgnoreCase
             )
         );
@@ -39,14 +38,14 @@ internal sealed class MainCommandShortcutProvider(IDataManager dataManager) : Ab
             if (!ui->IsMainCommandUnlocked(action.RowId) || 0 == action.Icon) continue;
 
             if (searchFilter != null
-                && !action.Name.ToDalamudString().TextValue.Contains(searchFilter, StringComparison.OrdinalIgnoreCase))
+                && !action.Name.ExtractText().Contains(searchFilter, StringComparison.OrdinalIgnoreCase))
                 continue;
 
             shortcuts.Add(
                 new() {
                     Id          = action.RowId,
-                    Name        = action.Name.ToDalamudString().TextValue,
-                    Description = action.Description.ToDalamudString().TextValue,
+                    Name        = action.Name.ExtractText(),
+                    Description = action.Description.ExtractText(),
                     IconId      = (uint)action.Icon
                 }
             );
@@ -58,15 +57,20 @@ internal sealed class MainCommandShortcutProvider(IDataManager dataManager) : Ab
     /// <inheritdoc/>
     public override unsafe Shortcut? GetShortcut(uint id, string widgetInstanceId)
     {
-        var command = dataManager.GetExcelSheet<MainCommand>()!.GetRow(id);
+        var command = dataManager.GetExcelSheet<MainCommand>().FindRow(id);
         if (command == null) return null;
 
+        UIModule* uiModule = UIModule.Instance();
+        if (uiModule == null) return null;
+
+        AgentHUD* agentHud = AgentHUD.Instance();
+        if (agentHud == null) return null;
+
         return new() {
-            Id         = id,
-            Name       = command.Name.ToDalamudString().TextValue,
-            IconId     = (uint)command.Icon,
-            IsDisabled = !UIModule.Instance()->IsMainCommandUnlocked(id)
-                || ActionManager.Instance()->GetActionStatus(ActionType.MainCommand, id) != 0
+            Id     = id,
+            Name   = command.Value.Name.ExtractText(),
+            IconId = (uint)command.Value.Icon,
+            IsDisabled = !uiModule->IsMainCommandUnlocked(id) || !agentHud->IsMainCommandEnabled(id)
         };
     }
 
@@ -75,6 +79,9 @@ internal sealed class MainCommandShortcutProvider(IDataManager dataManager) : Ab
     {
         UIModule* uiModule = UIModule.Instance();
         if (uiModule == null || !uiModule->IsMainCommandUnlocked(id)) return;
+
+        AgentHUD* agentHud = AgentHUD.Instance();
+        if (agentHud == null || !agentHud->IsMainCommandEnabled(id)) return;
 
         uiModule->ExecuteMainCommand(id);
     }

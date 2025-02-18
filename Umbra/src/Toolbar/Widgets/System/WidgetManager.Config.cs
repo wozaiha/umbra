@@ -15,7 +15,7 @@
  */
 
 using Dalamud.Plugin.Services;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -49,6 +49,9 @@ internal partial class WidgetManager
 
     [ConfigVariable("Toolbar.EnforceFloatingPopups")]
     public static bool EnforceFloatingPopups { get; set; } = false;
+
+    [ConfigVariable("Toolbar.UseRoundedCornersInPopups")]
+    public static bool UseRoundedCornersInPopups { get; set; } = true;
 
     [ConfigVariable("Toolbar.EnableQuickSettingAccess", "General", "Toolbar")]
     public static bool EnableQuickSettingAccess { get; set; } = false;
@@ -183,7 +186,7 @@ internal partial class WidgetManager
     {
         if (JobToProfileName.Count > 0) return;
 
-        List<ClassJob> jobs = Framework.Service<IDataManager>().GetExcelSheet<ClassJob>()!.ToList();
+        List<ClassJob> jobs = Framework.Service<IDataManager>().GetExcelSheet<ClassJob>().ToList();
 
         foreach (var job in jobs) {
             JobToProfileName[(byte)job.RowId] = "Default";

@@ -3,7 +3,7 @@ using Dalamud.Utility.Signatures;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Client.UI.Shell;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using Umbra.Common;
 
 namespace Umbra.Game.Macro;
@@ -86,7 +86,9 @@ internal sealed unsafe class MacroIconProvider : IMacroIconProvider
             RaptureHotbarModule.HotbarSlotType.BuddyAction        => GetIconIdForBuddyAction(rowId, originalId),
             RaptureHotbarModule.HotbarSlotType.Companion          => GetIconIdForCompanion(rowId, originalId),
             RaptureHotbarModule.HotbarSlotType.GearSet            => GetIconIdForGearset((int)rowId + 1),
+            RaptureHotbarModule.HotbarSlotType.GeneralAction      => GetIconIdForGeneralAction(rowId, originalId),
             RaptureHotbarModule.HotbarSlotType.PetAction          => GetIconIdForPetAction(rowId, originalId),
+            RaptureHotbarModule.HotbarSlotType.PvPQuickChat       => GetIconIdForPvPQuickChat(rowId, originalId),
             RaptureHotbarModule.HotbarSlotType.Mount              => GetIconIdForMount(rowId, originalId),
             RaptureHotbarModule.HotbarSlotType.FieldMarker        => GetIconIdForFieldMarker(rowId, originalId),
             _                                                     => originalId,
@@ -103,46 +105,56 @@ internal sealed unsafe class MacroIconProvider : IMacroIconProvider
 
     private uint GetIconIdForAction(uint rowId, uint fallbackId)
     {
-        return DataManager.GetExcelSheet<Action>()!.GetRow(rowId)?.Icon ?? fallbackId;
+        return DataManager.GetExcelSheet<Action>().FindRow(rowId)?.Icon ?? fallbackId;
     }
 
     private uint GetIconIdForItem(uint rowId, uint fallbackId)
     {
-        return DataManager.GetExcelSheet<Item>()!.GetRow(rowId)?.Icon ?? fallbackId;
+        return DataManager.GetExcelSheet<Item>().FindRow(rowId)?.Icon ?? fallbackId;
     }
 
     private uint GetIconIdForEmote(uint rowId, uint fallbackId)
     {
-        return DataManager.GetExcelSheet<Emote>()!.GetRow(rowId)?.Icon ?? fallbackId;
+        return DataManager.GetExcelSheet<Emote>().FindRow(rowId)?.Icon ?? fallbackId;
     }
 
     private uint GetIconIdForMarker(uint rowId, uint fallbackId)
     {
-        return ((uint?)DataManager.GetExcelSheet<Marker>()!.GetRow(rowId)?.Icon) ?? fallbackId;
+        return (uint?)DataManager.GetExcelSheet<Marker>().FindRow(rowId)?.Icon ?? fallbackId;
     }
 
     private uint GetIconIdForBuddyAction(uint rowId, uint fallbackId)
     {
-        return ((uint?)DataManager.GetExcelSheet<BuddyAction>()!.GetRow(rowId)?.Icon) ?? fallbackId;
+        return (uint?)DataManager.GetExcelSheet<BuddyAction>().FindRow(rowId)?.Icon ?? fallbackId;
     }
 
     private uint GetIconIdForCompanion(uint rowId, uint fallbackId)
     {
-        return ((uint?)DataManager.GetExcelSheet<Companion>()!.GetRow(rowId)?.Icon) ?? fallbackId;
+        return DataManager.GetExcelSheet<Companion>().FindRow(rowId)?.Icon ?? fallbackId;
+    }
+
+    private uint GetIconIdForGeneralAction(uint rowId, uint fallbackId)
+    {
+        return (uint?)DataManager.GetExcelSheet<GeneralAction>().FindRow(rowId)?.Icon ?? fallbackId;
     }
 
     private uint GetIconIdForPetAction(uint rowId, uint fallbackId)
     {
-        return ((uint?)DataManager.GetExcelSheet<PetAction>()!.GetRow(rowId)?.Icon) ?? fallbackId;
+        return (uint?)DataManager.GetExcelSheet<PetAction>().FindRow(rowId)?.Icon ?? fallbackId;
+    }
+
+    private uint GetIconIdForPvPQuickChat(uint rowId, uint fallbackId)
+    {
+        return (uint?)DataManager.GetExcelSheet<QuickChat>().FindRow(rowId)?.Icon ?? fallbackId;
     }
 
     private uint GetIconIdForMount(uint rowId, uint fallbackId)
     {
-        return ((uint?)DataManager.GetExcelSheet<Mount>()!.GetRow(rowId)?.Icon) ?? fallbackId;
+        return DataManager.GetExcelSheet<Mount>().FindRow(rowId)?.Icon ?? fallbackId;
     }
 
     private uint GetIconIdForFieldMarker(uint rowId, uint fallbackId)
     {
-        return ((uint?)DataManager.GetExcelSheet<FieldMarker>()!.GetRow(rowId)?.MapIcon) ?? fallbackId;
+        return DataManager.GetExcelSheet<FieldMarker>().FindRow(rowId)?.MapIcon ?? fallbackId;
     }
 }

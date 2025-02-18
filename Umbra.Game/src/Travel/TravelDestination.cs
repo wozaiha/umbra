@@ -14,13 +14,13 @@
  *     GNU Affero General Public License for more details.
  */
 
-using System.Collections.Generic;
 using Dalamud.Game.ClientState.Aetherytes;
 using Dalamud.Memory;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
+using System.Collections.Generic;
+using Umbra.Common;
 
 namespace Umbra.Game;
 
@@ -76,7 +76,7 @@ public class TravelDestination
     private string GetDestinationName(IAetheryteEntry entry)
     {
         if (!IsHousing) {
-            return entry.AetheryteData.GameData!.PlaceName.Value!.Name.ToString();
+            return entry.AetheryteData.Value.PlaceName.Value.Name.ExtractText();
         }
 
         // Apartment.
@@ -101,7 +101,7 @@ public class TravelDestination
         }
 
         // Unknown (most likely also private estates)
-        return $"{GetTerritoryName(entry.TerritoryId)} - {entry.AetheryteData.GameData!.PlaceName.Value!.Name}";
+        return $"{GetTerritoryName(entry.TerritoryId)} - {entry.AetheryteData.Value.PlaceName.Value.Name}";
     }
 
     private uint? GetIconId()
@@ -136,16 +136,16 @@ public class TravelDestination
             return cachedName;
         }
 
-        var territory = Common.Framework
+        var territory = Framework
             .Service<IDataManager>()
-            .GetExcelSheet<Lumina.Excel.GeneratedSheets.TerritoryType>()!
-            .GetRow(territoryId);
+            .GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>()
+            .FindRow(territoryId);
 
         if (null == territory) {
             return TerritoryNames[territoryId] = "???";
         }
 
-        return TerritoryNames[territoryId] = territory.PlaceName.Value?.Name.ToString() ?? "???";
+        return TerritoryNames[territoryId] = territory.Value.PlaceName.Value.Name.ExtractText();
     }
 
     public override string ToString()

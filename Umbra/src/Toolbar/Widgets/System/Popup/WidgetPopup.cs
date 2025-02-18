@@ -1,4 +1,4 @@
-﻿/* Umbra | (c) 2024 by Una              ____ ___        ___.
+/* Umbra | (c) 2024 by Una              ____ ___        ___.
  * Licensed under the terms of AGPL-3  |    |   \ _____ \_ |__ _______ _____
  *                                     |    |   //     \ | __ \\_  __ \\__  \
  * https://github.com/una-xiv/umbra    |    |  /|  Y Y  \| \_\ \|  | \/ / __ \_
@@ -14,6 +14,7 @@
  *     GNU Affero General Public License for more details.
  */
 
+using FFXIVClientStructs.FFXIV.Client.Graphics.Kernel;
 using System.Numerics;
 using ImGuiNET;
 using System;
@@ -166,9 +167,10 @@ public abstract class WidgetPopup : IDisposable
 
         if (_opacity > 0.9) _opacity = 1;
 
-        _popupNode.Style.Opacity     = _opacity;
-        _popupNode.Style.ShadowInset = (int)(_yOffset + 8);
-        _popupNode.Style.ShadowSize  = WidgetManager.EnableWidgetPopupShadow ? null : new(0);
+        _popupNode.Style.Opacity      = _opacity;
+        _popupNode.Style.ShadowInset  = (int)(_yOffset + 8);
+        _popupNode.Style.ShadowSize   = WidgetManager.EnableWidgetPopupShadow ? null : new(0);
+        _popupNode.Style.BorderRadius = WidgetManager.UseRoundedCornersInPopups ? 7 : 0;
 
         // Draw the popup window.
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding,    Vector2.Zero);
@@ -182,6 +184,14 @@ public abstract class WidgetPopup : IDisposable
             //       is opened. Issue has been narrowed down to the fact that
             //       the popup contains ImGui scrolling child frames.
             ImGui.SetNextWindowViewport(ImGui.GetMainViewport().ID);
+        }
+
+        if (IsMultiMonitor) {
+            unsafe {
+                var device = Device.Instance();
+
+                if (Size.X > device->Width || Size.Y > device->Height) Size = new(1, 1);
+            }
         }
 
         ImGui.SetNextWindowPos(new(Position.X, Position.Y));
@@ -225,6 +235,9 @@ public abstract class WidgetPopup : IDisposable
         _yOffset     = Toolbar.IsTopAligned ? -32 : 32;
         _yOffsetDest = 0;
     }
+
+    private static bool IsMultiMonitor =>
+        (ImGui.GetIO().ConfigFlags & ImGuiConfigFlags.ViewportsEnable) == ImGuiConfigFlags.ViewportsEnable;
 
     private static Vector2 GetPopupPositionAligned(ToolbarWidget activator, Vector2 size)
     {

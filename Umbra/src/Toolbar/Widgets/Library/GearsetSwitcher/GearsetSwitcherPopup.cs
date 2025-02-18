@@ -15,11 +15,9 @@
  */
 
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
 using Umbra.Common;
@@ -28,7 +26,7 @@ using Una.Drawing;
 
 namespace Umbra.Widgets;
 
-internal sealed partial class GearsetSwitcherPopup : WidgetPopup, IDisposable
+internal sealed partial class GearsetSwitcherPopup : WidgetPopup
 {
     protected override Node Node { get; } = new() {
         ChildNodes = [
@@ -156,9 +154,11 @@ internal sealed partial class GearsetSwitcherPopup : WidgetPopup, IDisposable
     public bool   ShowExperienceBar           { get; set; } = true;
     public bool   ShowExperiencePct           { get; set; } = true;
     public bool   ShowItemLevel               { get; set; } = true;
+    public bool   HideLevelIfMax              { get; set; }
     public string GearsetButtonBackgroundType { get; set; } = "GradientV";
     public string GearsetFilterPrefix         { get; set; } = "";
     public int    GearsetNodeWidth            { get; set; } = 150;
+    public int    GearsetNodeHeight           { get; set; } = 40;
 
     public string HeaderIconType      { get; set; } = "Default";
     public string ButtonIconType      { get; set; } = "Default";
@@ -214,7 +214,7 @@ internal sealed partial class GearsetSwitcherPopup : WidgetPopup, IDisposable
 
         Node openGlamButton = Node.QuerySelector("#OpenGlam")!;
 
-        openGlamButton.Tooltip    = _dataManager.GetExcelSheet<GeneralAction>()!.GetRow(25)!.Name;
+        openGlamButton.Tooltip    = _dataManager.GetExcelSheet<GeneralAction>().GetRow(25).Name.ToString();
         openGlamButton.IsDisabled = !_player.IsGeneralActionUnlocked(25);
     }
 
@@ -241,14 +241,13 @@ internal sealed partial class GearsetSwitcherPopup : WidgetPopup, IDisposable
         Node.QuerySelector("#HeaderGearsetName")!.Style.Size = new(GearsetNodeWidth, 0);
         Node.QuerySelector("#HeaderGearsetInfo")!.Style.Size = new(GearsetNodeWidth, 0);
 
-
         // Assign role containers to the configured columns.
         foreach ((GearsetCategory category, Node node) in RoleContainers) {
             node.SortIndex = GetSortIndexForRole(category);
             var target = GetColumnForRole(category);
 
-            node.Style.Size = new(GearsetNodeWidth, 0);
-            node.QuerySelector("#RoleHeader")!.Style.Size = new(GearsetNodeWidth, GearsetNode.NodeHeight);
+            node.Style.Size                               = new(GearsetNodeWidth, 0);
+            node.QuerySelector("#RoleHeader")!.Style.Size = new(GearsetNodeWidth, GearsetNodeHeight);
             node.QuerySelector("#RoleBody")!.Style.Size   = new(GearsetNodeWidth + 8, 0);
 
             if (node.ParentNode != target) {
@@ -264,7 +263,7 @@ internal sealed partial class GearsetSwitcherPopup : WidgetPopup, IDisposable
                 int maxItems  = GetMaxItemsToDisplayForRole(category);
                 int gapHeight = listNode.ComputedStyle.Gap;
                 int setItems  = setCount < maxItems ? setCount : maxItems;
-                int height    = (setItems * GearsetNode.NodeHeight) + ((setItems - 1) * gapHeight);
+                int height    = (setItems * GearsetNodeHeight) + ((setItems - 1) * gapHeight);
                 listNode.Style.Size = new(GearsetNodeWidth, height);
             } else {
                 listNode.Style.Size = new(GearsetNodeWidth, 0);
@@ -304,6 +303,7 @@ internal sealed partial class GearsetSwitcherPopup : WidgetPopup, IDisposable
             }
 
             node.NodeWidth         = GearsetNodeWidth;
+            node.NodeHeight        = GearsetNodeHeight;
             node.ButtonIconType    = ButtonIconType;
             node.ButtonIconYOffset = ButtonIconYOffset;
             node.BackgroundType    = GearsetButtonBackgroundType;
@@ -311,6 +311,7 @@ internal sealed partial class GearsetSwitcherPopup : WidgetPopup, IDisposable
             node.ShowWarningIcon   = ShowWarningIcon;
             node.ShowExperienceBar = ShowExperienceBar;
             node.ShowExperiencePct = ShowExperiencePct;
+            node.HideLevelIfMax    = HideLevelIfMax;
 
             node.Update();
         }

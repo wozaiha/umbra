@@ -15,15 +15,15 @@
  */
 
 using Dalamud.Memory;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
 using Umbra.Common;
-using Sheet = Lumina.Excel.GeneratedSheets;
+using Sheet = Lumina.Excel.Sheets;
 
 namespace Umbra.Game;
 
@@ -49,8 +49,8 @@ internal sealed class ZoneMarkerFactory(IDataManager dataManager)
         { ZoneMarkerType.Inn, [60436, 60559, 60988] },
         { ZoneMarkerType.Mailbox, [60551] },
         { ZoneMarkerType.HuntVendor, [60571] },
-        { ZoneMarkerType.Taxi, [60581, 60311] },
-        { ZoneMarkerType.Ferry, [60352, 60456] },
+        { ZoneMarkerType.Taxi, [60311] },
+        { ZoneMarkerType.Ferry, [60352, 60456, 63970] },
         { ZoneMarkerType.ChocoboTender, [60842] },
         { ZoneMarkerType.GoldSaucerEmployee, [60582] },
         { ZoneMarkerType.FashionReportNpc, [60960] },
@@ -113,9 +113,7 @@ internal sealed class ZoneMarkerFactory(IDataManager dataManager)
                 71003, 71004, 71005, 71006, 71023, 71024, 71025, 71026, 71043, 71044, 71045, 71046, 71063, 71064, 71065,
                 71066, 71083, 71084, 71085, 71086, 71123, 71124, 71125, 71126, 71143, 71144, 71145, 71203, 71223, 71225,
                 71243, 71244, 71245, 71263, 71264, 71265, 71283, 71284, 71285, 71286, 71312, 71313, 71323, 71324, 71325,
-                71343, 71344, 71345, 71346, 70961, 70962, 70963, 70964, 70965, 70966, 70967, 70968, 70969, 70970, 70971,
-                70972, 70973, 70974, 70975, 70976, 70977, 70978, 70979, 70980, 70981, 70982, 70983, 70984, 70985, 70986,
-                70987, 70988, 70989, 70990, 70991, 70992, 70993, 70994, 70995, 70996, 70997, 70998, 70999
+                71343, 71344, 71345, 71346, 70997, 70998, 70999, 71006, 71026, 71046, 71066, 71086, 71113, 71326, 71346
             ]
         }, {
             ZoneMarkerType.Quest,
@@ -127,14 +125,15 @@ internal sealed class ZoneMarkerFactory(IDataManager dataManager)
         }, {
             ZoneMarkerType.FeatureQuest,
             [
-                71141, 71142, 71143, 71144, 71145, 71146, 71147, 71148, 71149, 71151, 71152, 71153, 71154, 71155, 71156,
+                71141, 71142, 71143, 71144, 71145, 71147, 71148, 71149, 71151, 71152, 71153, 71154, 71155, 71156,
                 71157, 71158, 71159
             ]
         }, {
             ZoneMarkerType.QuestLink,
             [
-                71061, 71062, 71063, 71064, 71065, 71066, 71067, 71068, 71069, 71071, 71072, 71073, 71074, 71075, 71076,
-                71077, 71078, 71079
+                70961, 70962, 70963, 70964, 70965, 70966, 70967, 70968, 70969, 70970, 70971, 70972, 70973, 70974, 70975,
+                70976, 70977, 70978, 70979, 70980, 70981, 70982, 70983, 70984, 70985, 70986, 70987, 70988, 70989, 70990,
+                70991, 70992, 70993, 70994, 70995, 70996
             ]
         }, {
             ZoneMarkerType.ObjectiveArea,
@@ -197,33 +196,19 @@ internal sealed class ZoneMarkerFactory(IDataManager dataManager)
         );
     }
 
-    public ZoneMarker FromMiniMapMarker(Sheet.Map map, MiniMapMarker marker)
-    {
-        var type = DetermineMarkerType(marker.MapMarker.IconId, "");
-
-        return new ZoneMarker(
-            type,
-            "",
-            new Vector2(marker.MapMarker.X, marker.MapMarker.Y),
-            MarkerToWorldPosition(map, new Vector2(marker.MapMarker.X, marker.MapMarker.Y)),
-            type is ZoneMarkerType.Area or ZoneMarkerType.ObjectiveArea ? 0u : marker.MapMarker.IconId,
-            0
-        );
-    }
-
     public ZoneMarker FromMapMarkerSheet(Sheet.Map map, Sheet.MapMarker marker)
     {
         var position = new Vector2(marker.X, marker.Y);
         var name     = GetStaticMarkerName(marker);
         var type     = DetermineMarkerType(marker.Icon, name);
 
-        return new ZoneMarker(
+        return new(
             type,
             name,
             position,
             MarkerToWorldPosition(map, position),
             type == ZoneMarkerType.Area ? 0u : marker.Icon,
-            marker.DataKey
+            marker.DataKey.RowId
         );
     }
 
@@ -247,27 +232,28 @@ internal sealed class ZoneMarkerFactory(IDataManager dataManager)
     {
         var v = pos.ToVector3();
 
-        v.X = ((v.X - 1024f) / (map.SizeFactor / 100.0f)) - (map.OffsetX * (map.SizeFactor / 100.0f));
-        v.Z = ((v.Z - 1024f) / (map.SizeFactor / 100.0f)) - (map.OffsetY * (map.SizeFactor / 100.0f));
+        var scale = map.SizeFactor / 100f;
+        v.X = (v.X / scale) - map.OffsetX - 1024 / scale;
+        v.Z = (v.Z / scale) - map.OffsetY - 1024 / scale;
 
         return v;
     }
 
     private string GetStaticMarkerName(Sheet.MapMarker marker)
     {
-        var label = marker.PlaceNameSubtext.Value?.Name.ToDalamudString().TextValue ?? "";
+        var label = marker.PlaceNameSubtext.Value.Name.ExtractText();
         if (!string.IsNullOrEmpty(label)) return SanitizeMarkerName(label);
         if (marker.Icon == 0) return "";
 
         if (marker.DataType == 4) {
-            var placeName = dataManager.GetExcelSheet<Sheet.PlaceName>()!.GetRow(marker.DataKey);
-            if (placeName != null) return SanitizeMarkerName(placeName.Name.ToDalamudString().TextValue);
+            var placeName = dataManager.GetExcelSheet<Sheet.PlaceName>().FindRow(marker.DataKey.RowId);
+            if (placeName != null) return SanitizeMarkerName(placeName.Value.Name.ExtractText());
         }
 
-        var symbol = dataManager.GetExcelSheet<Sheet.MapSymbol>()!.GetRow(marker.Icon);
+        var symbol = dataManager.GetExcelSheet<Sheet.MapSymbol>().FindRow(marker.Icon);
         if (symbol == null) return "";
 
-        return SanitizeMarkerName(symbol.PlaceName.Value?.Name.ToDalamudString().TextValue ?? "");
+        return SanitizeMarkerName(symbol.Value.PlaceName.Value.Name.ExtractText());
     }
 
     private static string SanitizeMarkerName(string name)

@@ -14,21 +14,20 @@
  *     GNU Affero General Public License for more details.
  */
 
+using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Plugin.Services;
+using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
+using FFXIVClientStructs.FFXIV.Component.GUI;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Objects.Enums;
-using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.Game.Group;
-using FFXIVClientStructs.FFXIV.Client.Game.UI;
-using FFXIVClientStructs.FFXIV.Client.UI;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using FFXIVClientStructs.FFXIV.Client.UI.Info;
-using FFXIVClientStructs.FFXIV.Component.GUI;
-using Lumina.Excel.GeneratedSheets;
 using Umbra.Common;
 using Umbra.Game.Inventory;
 using Umbra.Game.Societies;
@@ -166,6 +165,17 @@ internal sealed class Player : IPlayer
     public string CurrentWorldName { get; private set; } = "";
 
     /// <summary>
+    /// The name of the data center the player originates from.
+    /// </summary>
+    public string HomeDataCenterName { get; private set; } = "";
+
+    /// <summary>
+    /// The name of the data center the player is currently in.
+    /// </summary>
+    public string CurrentDataCenterName { get; private set; } = "";
+
+
+    /// <summary>
     /// The ID of the grand company the player is a member of.
     /// </summary>
     public byte GrandCompanyId { get; private set; }
@@ -184,6 +194,16 @@ internal sealed class Player : IPlayer
     /// True if the player is a battle mentor.
     /// </summary>
     public bool IsBattleMentor { get; private set; }
+
+    /// <summary>
+    /// True if the player is a new adventurer.
+    /// </summary>
+    public bool IsNovice { get; private set; }
+
+    /// <summary>
+    /// True if the player is a returning adventurer.
+    /// </summary>
+    public bool IsReturner { get; private set;  }
 
     /// <summary>
     /// Whether the player is currently in a sanctuary.
@@ -242,7 +262,6 @@ internal sealed class Player : IPlayer
     private readonly IPartyList          _partyList;
     private readonly JobInfoRepository   _jobInfoRepository;
     private readonly SocietiesRepository _societiesRepository;
-    private readonly IGameGui            _gameGui;
 
     private readonly uint[] _acceptedOnlineStatusIds = [47, 32, 31, 27, 28, 29, 30, 12, 17, 21, 22, 23];
 
@@ -251,7 +270,6 @@ internal sealed class Player : IPlayer
         ICondition           condition,
         IDataManager         dataManager,
         IEquipmentRepository equipmentRepository,
-        IGameGui             gameGui,
         IPartyList           partyList,
         JobInfoRepository    jobInfoRepository,
         SocietiesRepository  societiesRepository,
@@ -261,7 +279,6 @@ internal sealed class Player : IPlayer
         _clientState         = clientState;
         _condition           = condition;
         _dataManager         = dataManager;
-        _gameGui             = gameGui;
         _partyList           = partyList;
         _jobInfoRepository   = jobInfoRepository;
         _societiesRepository = societiesRepository;
@@ -279,7 +296,7 @@ internal sealed class Player : IPlayer
 
         AgentDeepDungeonStatus* dds = AgentDeepDungeonStatus.Instance();
 
-        OnlineStatusId = _clientState.LocalPlayer.OnlineStatus.Id;
+        OnlineStatusId = _clientState.LocalPlayer.OnlineStatus.RowId; // Was .Id
         IsMoving       = Vector3.Distance(Position, _clientState.LocalPlayer.Position) > 0.01f;
         Position       = _clientState.LocalPlayer.Position;
         Rotation       = _clientState.LocalPlayer.Rotation;
@@ -287,7 +304,7 @@ internal sealed class Player : IPlayer
         IsInPvP        = _clientState.IsPvPExcludingDen;
         IsInParty      = _partyList.Length > 0;
         IsInSanctuary  = TerritoryInfo.Instance()->InSanctuary;
-        JobId          = (byte)_clientState.LocalPlayer.ClassJob.Id;
+        JobId          = (byte)_clientState.LocalPlayer.ClassJob.RowId; // Was .Id
 
         if (dds != null && dds->IsAgentActive()) {
             JobId = (byte)dds->Data->ClassJobId;
@@ -335,9 +352,11 @@ internal sealed class Player : IPlayer
             && _condition[ConditionFlag.OccupiedInCutSceneEvent];
 
         // Unknown57 is the transient state the player is in after casting and before being actually mounted.
-        CanUseTeleportAction = ActionManager.Instance()->GetActionStatus(ActionType.Action, 5) == 0;
-        HomeWorldName        = _clientState.LocalPlayer.HomeWorld.GameData!.Name.ToString();
-        CurrentWorldName     = _clientState.LocalPlayer.CurrentWorld.GameData!.Name.ToString();
+        CanUseTeleportAction  = ActionManager.Instance()->GetActionStatus(ActionType.Action, 5) == 0;
+        HomeWorldName         = _clientState.LocalPlayer.HomeWorld.Value.Name.ExtractText();
+        CurrentWorldName      = _clientState.LocalPlayer.CurrentWorld.Value.Name.ExtractText();
+        HomeDataCenterName    = _clientState.LocalPlayer.HomeWorld.Value.DataCenter.Value.Name.ExtractText();
+        CurrentDataCenterName = _clientState.LocalPlayer.CurrentWorld.Value.DataCenter.Value.Name.ExtractText();
 
         var ps = PlayerState.Instance();
 
@@ -345,6 +364,8 @@ internal sealed class Player : IPlayer
         IsBattleMentor = ps->IsBattleMentor() && ps->MentorVersion == 3;
         IsTradeMentor  = ps->IsTradeMentor() && ps->MentorVersion == 3;
         IsMentor       = IsBattleMentor && IsTradeMentor;
+        IsNovice       = ps->IsNovice();
+        IsReturner    = ps->IsReturner();
 
         // Experience and level information.
         Level       = GetJobInfo(JobId).Level;
@@ -407,11 +428,11 @@ internal sealed class Player : IPlayer
     /// </summary>
     public ResolvedItem? FindResolvedItem(uint itemId)
     {
-        Item? item = _dataManager.GetExcelSheet<Item>()!.GetRow(itemId);
-        if (item != null) return new(item.RowId, item.Name.ToString(), item.Icon);
+        Item? item = _dataManager.GetExcelSheet<Item>().FindRow(itemId);
+        if (item != null) return new(item.Value.RowId, item.Value.Name.ExtractText(), item.Value.Icon);
 
-        EventItem? eventItem = _dataManager.GetExcelSheet<EventItem>()!.GetRow(itemId);
-        if (eventItem != null) return new(eventItem.RowId, eventItem.Name.ToString(), eventItem.Icon);
+        EventItem? eventItem = _dataManager.GetExcelSheet<EventItem>().FindRow(itemId);
+        if (eventItem != null) return new(eventItem.Value.RowId, eventItem.Value.Name.ExtractText(), eventItem.Value.Icon);
 
         return null;
     }
@@ -507,10 +528,10 @@ internal sealed class Player : IPlayer
     public unsafe bool IsGeneralActionUnlocked(uint actionId)
     {
         try {
-            GeneralAction? action = Framework.Service<IDataManager>().GetExcelSheet<GeneralAction>()!.GetRow(actionId);
+            GeneralAction? action = Framework.Service<IDataManager>().GetExcelSheet<GeneralAction>().FindRow(actionId);
 
             return action != null
-                && (action.UnlockLink == 0 || UIState.Instance()->IsUnlockLinkUnlocked(action.UnlockLink));
+                && (action.Value.UnlockLink == 0 || UIState.Instance()->IsUnlockLinkUnlocked(action.Value.UnlockLink));
         } catch {
             // Fall-through.
         }

@@ -59,22 +59,7 @@ internal class PartyMemberWorldMarkerFactory(IPlayer player, IPartyList partyLis
                     { "Green", I18N.Translate("Widget.GearsetSwitcher.Config.IconType.Option.Green") }
                 }
             ),
-            new IntegerMarkerConfigVariable(
-                "FadeDistance",
-                I18N.Translate("Settings.MarkersModule.Config.FadeDistance.Name"),
-                I18N.Translate("Settings.MarkersModule.Config.FadeDistance.Description"),
-                50,
-                35,
-                1000
-            ),
-            new IntegerMarkerConfigVariable(
-                "FadeAttenuation",
-                I18N.Translate("Settings.MarkersModule.Config.FadeAttenuation.Name"),
-                I18N.Translate("Settings.MarkersModule.Config.FadeAttenuation.Description"),
-                10,
-                0,
-                100
-            ),
+            ..DefaultFadeConfigVariables
         ];
     }
 
@@ -96,8 +81,9 @@ internal class PartyMemberWorldMarkerFactory(IPlayer player, IPartyList partyLis
             return;
         }
 
-        var fadeDist = GetConfigValue<int>("FadeDistance");
-        var fadeAttn = GetConfigValue<int>("FadeAttenuation");
+        var fadeDist       = GetConfigValue<int>("FadeDistance");
+        var fadeAttn       = GetConfigValue<int>("FadeAttenuation");
+        var maxVisDistance = GetConfigValue<int>("MaxVisibleDistance");
 
         List<string> usedKeys      = [];
         Vector3      playerPos     = player.Position;
@@ -108,7 +94,7 @@ internal class PartyMemberWorldMarkerFactory(IPlayer player, IPartyList partyLis
         uint         mapId         = zoneManager.CurrentZone.Id;
 
         foreach (var member in partyList) {
-            if (member.MaxHP == 0 || member.ClassJob.Id == 0) continue; // Probably not in this area.
+            if (member.MaxHP == 0 || member.ClassJob.RowId == 0) continue; // Probably not in this area.
 
             // Remove markers for party members that are close to the player.
             if (Vector3.Distance(member.Position, playerPos) < 50) continue;
@@ -116,20 +102,21 @@ internal class PartyMemberWorldMarkerFactory(IPlayer player, IPartyList partyLis
             string key = $"PM_{mapId}_{member.ContentId}";
             usedKeys.Add(key);
 
-            if (!JobInfoCache.TryGetValue(member.ClassJob.Id, out var jobInfo)) {
-                jobInfo = new(member.ClassJob.GameData!);
-                JobInfoCache[member.ClassJob.Id] = jobInfo;
+            if (!JobInfoCache.TryGetValue(member.ClassJob.Value.RowId, out var jobInfo)) {
+                jobInfo = new(member.ClassJob.Value);
+                JobInfoCache[member.ClassJob.RowId] = jobInfo;
             }
 
             SetMarker(
                 new() {
-                    Key           = key,
-                    Label         = showName ? member.Name.TextValue : "",
-                    IconId        = showIcon ? jobInfo.GetIcon(iconType) : 0,
-                    Position      = member.Position with { Y = member.Position.Y + 1.5f },
-                    MapId         = zoneManager.CurrentZone.Id,
-                    FadeDistance  = new(fadeDist, fadeDist + fadeAttn),
-                    ShowOnCompass = showOnCompass,
+                    Key                = key,
+                    Label              = showName ? member.Name.TextValue : "",
+                    IconId             = showIcon ? jobInfo.GetIcon(iconType) : 0,
+                    Position           = member.Position with { Y = member.Position.Y + 1.5f },
+                    MapId              = zoneManager.CurrentZone.Id,
+                    FadeDistance       = new(fadeDist, fadeDist + fadeAttn),
+                    ShowOnCompass      = showOnCompass,
+                    MaxVisibleDistance = maxVisDistance,
                 }
             );
         }

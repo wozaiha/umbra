@@ -14,11 +14,11 @@
  *     GNU Affero General Public License for more details.
  */
 
-using System.Collections.Generic;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using System;
+using System.Collections.Generic;
 using Umbra.Common;
 using Umbra.Game;
 using Umbra.Windows.Components;
@@ -55,9 +55,9 @@ internal partial class DurabilityWidget(
         }
 
         var           dm = Framework.Service<IDataManager>();
-        GeneralAction rp = dm.GetExcelSheet<GeneralAction>()!.GetRow(6)!;  // Repair
-        GeneralAction sp = dm.GetExcelSheet<GeneralAction>()!.GetRow(14)!; // Extract Materia
-        GeneralAction am = dm.GetExcelSheet<GeneralAction>()!.GetRow(13)!; // Materia Melding
+        GeneralAction rp = dm.GetExcelSheet<GeneralAction>().GetRow(6);  // Repair
+        GeneralAction sp = dm.GetExcelSheet<GeneralAction>().GetRow(14); // Extract Materia
+        GeneralAction am = dm.GetExcelSheet<GeneralAction>().GetRow(13); // Materia Melding
 
         Popup.AddButton(
             "Repair",
@@ -261,8 +261,8 @@ internal partial class DurabilityWidget(
             return false;
         }
 
-        Item item = DataManager.GetExcelSheet<Item>()!.GetRow(highestDarkMatterType)!;
-        Popup.SetButtonAltLabel("Repair", $"{item.Name.ToDalamudString().TextValue} x {highestDarkMatterCount}");
+        Item item = DataManager.GetExcelSheet<Item>().GetRow(highestDarkMatterType);
+        Popup.SetButtonAltLabel("Repair", $"{item.Name.ExtractText()} x {highestDarkMatterCount}");
 
         return true;
     }

@@ -55,6 +55,12 @@ internal partial class GearsetSwitcherWidget
 
         return [
             ..DefaultToolbarWidgetConfigVariables,
+            new StringWidgetConfigVariable(
+                "CustomLabel",
+                I18N.Translate("Widget.GearsetSwitcher.Config.CustomLabel.Name"),
+                I18N.Translate("Widget.GearsetSwitcher.Config.CustomLabel.Description"),
+                ""
+            ) { Category = I18N.Translate("Widget.ConfigCategory.WidgetAppearance") },
             new SelectWidgetConfigVariable(
                 "InfoType",
                 I18N.Translate("Widget.GearsetSwitcher.Config.InfoType.Name"),
@@ -112,6 +118,12 @@ internal partial class GearsetSwitcherWidget
                 0xFF212021
             ) { Category = I18N.Translate("Widget.ConfigCategory.WidgetAppearance") },
             new BooleanWidgetConfigVariable(
+                "HideLevelIfMax",
+                I18N.Translate("Widget.GearsetSwitcher.Config.HideLevelIfMax.Name"),
+                I18N.Translate("Widget.GearsetSwitcher.Config.HideLevelIfMax.Description"),
+                false
+            ) { Category = I18N.Translate("Widget.ConfigCategory.MenuAppearance") },
+            new BooleanWidgetConfigVariable(
                 "AutoCloseOnChange",
                 I18N.Translate("Widget.GearsetSwitcher.Config.AutoCloseOnChange.Name"),
                 I18N.Translate("Widget.GearsetSwitcher.Config.AutoCloseOnChange.Description"),
@@ -130,6 +142,14 @@ internal partial class GearsetSwitcherWidget
                 240,
                 120,
                 400
+            ) { Category = I18N.Translate("Widget.ConfigCategory.MenuAppearance") },
+            new IntegerWidgetConfigVariable(
+                "GearsetNodeHeight",
+                I18N.Translate("Widget.GearsetSwitcher.Config.GearsetNodeHeight.Name"),
+                I18N.Translate("Widget.GearsetSwitcher.Config.GearsetNodeHeight.Description"),
+                40,
+                40,
+                80
             ) { Category = I18N.Translate("Widget.ConfigCategory.MenuAppearance") },
             new StringWidgetConfigVariable(
                 "GearsetFilterPrefix",
